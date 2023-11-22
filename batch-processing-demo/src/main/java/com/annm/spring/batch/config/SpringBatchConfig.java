@@ -50,7 +50,7 @@ public class SpringBatchConfig {
     @Bean
     public FlatFileItemReader<Customer> reader(){
         FlatFileItemReader<Customer> itemReader = new FlatFileItemReader<>();
-        itemReader.setResource(new FileSystemResource("/Users/nguyenminhan/Workspace/Spring/Spring Batch/SpringBatch/batch-processing-demo/src/main/resources/customers.csv"));
+        itemReader.setResource(new FileSystemResource("D:/Workspace/Spring/SpringBatch/SpringBatch-Demo/batch-processing-demo/src/main/resources/customers.csv"));
         itemReader.setName("csvReader");
         itemReader.setLinesToSkip(1);
         itemReader.setLineMapper(lineMapper());
@@ -140,7 +140,7 @@ public class SpringBatchConfig {
     @Bean
     public FlatFileItemWriter<Customer> dbToCsvWriter(){
         FlatFileItemWriter<Customer> dbToCsvWriter = new FlatFileItemWriter<>();
-        dbToCsvWriter.setResource(new FileSystemResource("/Users/nguyenminhan/Workspace/Spring/Spring Batch/SpringBatch/batch-processing-demo/src/main/resources/OutputCustomers.csv"));
+        dbToCsvWriter.setResource(new FileSystemResource("D:/Workspace/Spring/SpringBatch/SpringBatch-Demo/batch-processing-demo/src/main/resources/OutputCustomers.csv"));
         dbToCsvWriter.setLineAggregator(new DelimitedLineAggregator<Customer>() {{
                     setDelimiter(",");
                     setFieldExtractor(new BeanWrapperFieldExtractor<Customer>() {{setNames(new String[]{ "id", "firstName","lastName", "email", "gender", "contactNo", "country", "dob"});}});
