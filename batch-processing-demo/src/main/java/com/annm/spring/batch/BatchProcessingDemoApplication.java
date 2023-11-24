@@ -50,31 +50,37 @@ public class BatchProcessingDemoApplication {
 //					break;
 //			}
 //		}
-		String VMArgumentsList[] = ManagementFactory.getRuntimeMXBean().getInputArguments().toArray(new String[0]);
-		List<String> JobList = new ArrayList<String>();
-		for (String s : VMArgumentsList) {
-			if (s.contains("-Djob")){
-				int equalIndex = s.indexOf("=");
-				s = s.substring(2, equalIndex);
-				JobList.add(s);
-			}
-		}
-		for (String s : JobList) {
-			String choice = System.getProperty(s);
-			switch (choice) {
-				case "CSVtoDB":
-					runJob(jobLauncher, job1);
-					break;
-				case "DBtoCSV":
-					runJob(jobLauncher, job2);
-					break;
-				default:
-					System.out.println("Invalid choice. Please enter a valid option.");
-					break;
-			}
-		}
 
-		context.close();
+
+
+//		String VMArgumentsList[] = ManagementFactory.getRuntimeMXBean().getInputArguments().toArray(new String[0]);
+//		List<String> JobList = new ArrayList<String>();
+//		for (String s : VMArgumentsList) {
+//			if (s.contains("-Djob")){
+//				int equalIndex = s.indexOf("=");
+//				s = s.substring(2, equalIndex);
+//				JobList.add(s);
+//			}
+//		}
+//		if()
+//		for (String s : JobList) {
+//			String choice = System.getProperty(s);
+//			switch (choice) {
+//				case "CSVtoDB":
+//					runJob(jobLauncher, job1);
+//					break;
+//				case "DBtoCSV":
+//					runJob(jobLauncher, job2);
+//					break;
+//				default:
+//					System.out.println("Invalid choice. Please enter a valid option.");
+//					break;
+//			}
+//		}
+//
+//		context.close();
+
+
 	}
 
 //	static String fullVMArguments() {
