@@ -21,11 +21,6 @@ public class BigQueryItemReader<Customer> implements ItemReader<Customer>, Initi
 
     private QueryJobConfiguration queryConfig;
 
-    private String query = "";
-    public void setQuery(String query){
-        this.query = query;
-    }
-
     public void setJobConfiguration(QueryJobConfiguration queryConfig) {
         this.queryConfig = queryConfig;
     }
