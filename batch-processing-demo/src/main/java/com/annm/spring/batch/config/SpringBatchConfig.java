@@ -1,7 +1,13 @@
 package com.annm.spring.batch.config;
 
+import com.annm.spring.batch.config.reader.BigQueryItemReader;
 import com.annm.spring.batch.entity.Customer;
 import com.annm.spring.batch.repository.CustomerRepository;
+import com.annm.spring.batch.service.BigQueryService;
+import com.google.cloud.bigquery.BigQueryResult;
+import com.google.cloud.bigquery.FieldValueList;
+import com.google.cloud.bigquery.QueryJobConfiguration;
+import com.google.cloud.bigquery.TableResult;
 import lombok.AllArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -9,6 +15,7 @@ import org.springframework.batch.core.configuration.annotation.EnableBatchProces
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.data.RepositoryItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.file.FlatFileItemReader;
@@ -22,9 +29,8 @@ import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.RowMapper;
 
 import javax.sql.DataSource;
@@ -47,10 +53,18 @@ public class SpringBatchConfig {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private BigQueryService bigQueryService;
+
+
+
+
+
+    // Config feature CSV to Database
     @Bean
     public FlatFileItemReader<Customer> reader(){
         FlatFileItemReader<Customer> itemReader = new FlatFileItemReader<>();
-        itemReader.setResource(new FileSystemResource("/Users/nguyenminhan/Workspace/Spring/Spring Batch/SpringBatch/batch-processing-demo/src/main/resources/customers.csv"));
+        itemReader.setResource(new FileSystemResource("D:\\Workspace\\Spring\\SpringBatch\\2023-hn-NguyenMinhAn-SpringBatchDemo\\batch-processing-demo\\src\\main\\resources\\customers.csv"));
         itemReader.setName("csvReader");
         itemReader.setLinesToSkip(1);
         itemReader.setLineMapper(lineMapper());
@@ -93,7 +107,7 @@ public class SpringBatchConfig {
                 .reader(reader())
                 .processor(processor())
                 .writer(writer())
-                .taskExecutor(taskExecutor())
+//                .taskExecutor(taskExecutor())
                 .build();
     }
 
@@ -103,20 +117,29 @@ public class SpringBatchConfig {
                 .flow(step1()).end().build();
     }
 
-    @Bean
-    public TaskExecutor taskExecutor(){
-        SimpleAsyncTaskExecutor asyncTaskExecutor = new SimpleAsyncTaskExecutor();
-        asyncTaskExecutor.setConcurrencyLimit(10);
-        return asyncTaskExecutor;
-    }
+//    Multithread
+//    @Bean
+//    public TaskExecutor taskExecutor(){
+//        SimpleAsyncTaskExecutor asyncTaskExecutor = new SimpleAsyncTaskExecutor();
+//        asyncTaskExecutor.setConcurrencyLimit(10);
+//        return asyncTaskExecutor;
+//    }
 
 
 
+
+
+
+
+
+
+    // Config feature Database to CSV
     private class customerMapper implements RowMapper<Customer>{
         @Override
         public Customer mapRow(ResultSet rs, int rowNum) throws SQLException {
             Customer customer = new Customer();
             customer.setId(rs.getInt("customer_id"));
+            customer.setGender(rs.getString("gender"));
             customer.setContactNo(rs.getString("contact"));
             customer.setCountry(rs.getString("country"));
             customer.setDob(rs.getString("dob"));
@@ -140,7 +163,7 @@ public class SpringBatchConfig {
     @Bean
     public FlatFileItemWriter<Customer> dbToCsvWriter(){
         FlatFileItemWriter<Customer> dbToCsvWriter = new FlatFileItemWriter<>();
-        dbToCsvWriter.setResource(new FileSystemResource("/Users/nguyenminhan/Workspace/Spring/Spring Batch/SpringBatch/batch-processing-demo/src/main/resources/OutputCustomers.csv"));
+        dbToCsvWriter.setResource(new FileSystemResource("D:\\Workspace\\Spring\\SpringBatch\\2023-hn-NguyenMinhAn-SpringBatchDemo\\batch-processing-demo\\src\\main\\resources\\OutputCustomers.csv"));
         dbToCsvWriter.setLineAggregator(new DelimitedLineAggregator<Customer>() {{
                     setDelimiter(",");
                     setFieldExtractor(new BeanWrapperFieldExtractor<Customer>() {{setNames(new String[]{ "id", "firstName","lastName", "email", "gender", "contactNo", "country", "dob"});}});
@@ -167,6 +190,73 @@ public class SpringBatchConfig {
                 .build();
     }
 
+
+
+
+
+
+
+    // Config feature query GCP Bigquery and save to Database
+
+    private class BQMapper implements Converter<FieldValueList, Customer>{
+
+        @Override
+        public Customer convert(FieldValueList row) {
+            int id = row.get("id").getNumericValue().intValue();
+            String firstName = row.get("firstName").getStringValue();
+            String lastName = row.get("lastName").getStringValue();
+            String email = row.get("email").getStringValue();
+            String gender = row.get("gender").getStringValue();
+            String contactNo = row.get("contactNo").getStringValue();
+            String country = row.get("country").getStringValue();
+            String dob = row.get("dob").getStringValue();
+            Customer customer = new Customer();
+            customer.setId(id);
+            customer.setContactNo(contactNo);
+            customer.setCountry(country);
+            customer.setDob(dob);
+            customer.setEmail(email);
+            customer.setGender(gender);
+            customer.setFirstName(firstName);
+            customer.setLastName(lastName);
+            return customer;
+        }
+    }
+
+    @Bean
+    public BigQueryItemReader<Customer> bigQueryItemReader(){
+        BigQueryItemReader<Customer> bigQueryItemReader = new BigQueryItemReader<>();
+        QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder("SELECT * FROM `blissful-hash-405809.data_demo.customer` WHERE id < 500;")
+                .setUseLegacySql(false)
+                .build();
+        bigQueryItemReader.setJobConfiguration(queryConfig);
+        BQMapper bqMapper = new BQMapper();
+        bigQueryItemReader.setRowMapper(bqMapper);
+        return bigQueryItemReader;
+    }
+
+    @Bean
+    public RepositoryItemWriter<Customer> bigQueryToDatabaseWriter(){
+        RepositoryItemWriter<Customer> writer = new RepositoryItemWriter<>();
+        writer.setRepository(customerRepository);
+        writer.setMethodName("save");
+        return writer;
+    }
+
+    @Bean
+    public Step step3(){
+        return stepBuilderFactory.get("bigQueryToDB-step")
+                .<Customer, Customer>chunk(10)
+                .reader(bigQueryItemReader())
+                .writer(bigQueryToDatabaseWriter())
+                .build();
+    }
+
+    @Bean
+    public Job runJob3(){
+        return jobBuilderFactory.get("bigQueryToDB")
+                .flow(step3()).end().build();
+    }
 
 
 }
